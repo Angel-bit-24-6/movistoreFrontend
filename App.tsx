@@ -1,20 +1,31 @@
+import "./global.css";
+import 'react-native-get-random-values';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { AuthProvider, useAuth } from './src/context/AuthContext'; // Importar useAuth
+import AppContent from './src/AppContent'; // Importar el nuevo componente AppContent
+import { ToastProvider } from './src/context/ToastContext';
+import { CartProvider } from './src/context/CartContext'; // Importar el CartProvider
+import { StoreProvider } from './src/context/StoreContext'; // Importar el StoreProvider
+import ToastContainer from './src/components/Toast/ToastContainer';
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <CartProvider>
+            <StoreProvider>{/* Envolver con StoreProvider */}
+              <SafeAreaView className="flex-1 bg-white">
+                <AppContent />{/* Renderizar el nuevo componente AppContent */}
+                <ToastContainer />
+                <StatusBar style="auto" />
+              </SafeAreaView>
+            </StoreProvider>
+          </CartProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

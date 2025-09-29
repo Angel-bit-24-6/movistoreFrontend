@@ -24,7 +24,10 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "bundler": "metro"
+    },
+    "extra": {
+      "apiUrl": "notFound.com"
     }
   }
 }

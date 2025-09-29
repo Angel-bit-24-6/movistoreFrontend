@@ -7,7 +7,6 @@ node_modules/
 .expo/
 dist/
 web-build/
-expo-env.d.ts
 
 # Native
 .kotlin/
@@ -39,3 +38,21 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Archivos de caché y configuración de Nativewind
+.nativewind/
+nativewind-output.css
+
+# Logs de Expo
+*.log
+
+# Archivos de caché
+.cache/
+
+# Archivos generados por EAS Build
+*.apk
+*.aab
+*.ipa
+eas-build-on-demand.zip
+eas-credentials.json
+build/
