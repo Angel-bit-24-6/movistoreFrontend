@@ -137,6 +137,7 @@ const OrderListScreen = ({ navigation }: OrderListScreenProps) => {
           <TextInput
             className="flex-1 border border-gray-300 rounded-md p-2 text-gray-800 bg-white mr-2"
             placeholder={isAdmin ? "Buscar órdenes (por cliente o tienda)..." : "Buscar órdenes por tienda..."}
+            placeholderTextColor="#6B7280" // Añadido para visibilidad
             value={pendingSearchTerm}
             onChangeText={handlePendingSearchChange}
             onSubmitEditing={handleSearchSubmit}
@@ -157,6 +158,8 @@ const OrderListScreen = ({ navigation }: OrderListScreenProps) => {
           <Picker
             selectedValue={statusFilter}
             onValueChange={handleChangeStatus}
+            style={{ color: '#374151' }} // Añadido para visibilidad
+            dropdownIconColor="#6B7280" // Añadido para visibilidad
           >
             <Picker.Item label="Todos" value="all" />
             <Picker.Item label="Pendiente" value="pending" />
@@ -175,6 +178,8 @@ const OrderListScreen = ({ navigation }: OrderListScreenProps) => {
               <Picker
                 selectedValue={storeIdFilter ? storeIdFilter.toString() : ''}
                 onValueChange={handleStoreFilterChange}
+                style={{ color: '#374151' }} // Añadido para visibilidad
+                dropdownIconColor="#6B7280" // Añadido para visibilidad
               >
                 <Picker.Item label="Todas las tiendas" value="" />
                 {stores.map(store => (
@@ -247,6 +252,8 @@ const OrderListScreen = ({ navigation }: OrderListScreenProps) => {
                   setSelectedOrder({ ...selectedOrder, status: itemValue });
                 }
               }}
+              style={{ color: '#374151' }} // Añadido para visibilidad
+              dropdownIconColor="#6B7280" // Añadido para visibilidad
             >
               <Picker.Item label="Pendiente" value="pending" />
               <Picker.Item label="Procesando" value="processing" />

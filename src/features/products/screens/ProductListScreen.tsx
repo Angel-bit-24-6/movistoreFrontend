@@ -137,6 +137,7 @@ const ProductListScreen = ({ navigation }: ProductListScreenProps) => {
           <TextInput
             className="flex-1 border border-gray-300 rounded-md p-2 text-gray-800 bg-white mr-2"
             placeholder="Buscar productos..."
+            placeholderTextColor="#6B7280" // Un gris medio, similar a text-gray-500
             value={pendingSearchTerm}
             onChangeText={handlePendingSearchChange}
             onSubmitEditing={handleSearchSubmit}
@@ -162,8 +163,8 @@ const ProductListScreen = ({ navigation }: ProductListScreenProps) => {
               <Picker
                 selectedValue={selectedStoreId ? selectedStoreId.toString() : null}
                 onValueChange={handleStoreChange}
-                style={{ height: 50, width: '100%' }}
-                itemStyle={{ fontSize: 16, color: '#374151' }}
+                style={{ height: 50, width: '100%', color: '#374151' }} // Añade color aquí para el texto del valor seleccionado
+                dropdownIconColor="#6B7280" // Un color para el icono del dropdown, si quieres cambiarlo
               >
                 {stores.map((store) => (
                   <Picker.Item key={store.id} label={store.name} value={store.id.toString()} />

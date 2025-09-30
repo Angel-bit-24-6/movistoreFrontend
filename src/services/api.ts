@@ -3,8 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants'; // Importar Constants
 
 // Acceder a la URL desde las propiedades "extra" del expo config
-const API_BASE_URL = Constants.expoConfig?.extra?.apiUrl as string || 'http://localhost:5000/api/v1'; // Fallback por si acaso
-
+const API_BASE_URL =
+  (Constants.expoConfig?.extra?.apiUrl as string | undefined)
+  || 'http://localhost:5000/api/v1';
+console.log('API_BASE_URL', API_BASE_URL);
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {

@@ -264,6 +264,7 @@ const ProductForm = ({
           value={formData.name || ''}
           onChangeText={(text) => handleChange('name', text)}
           placeholder="Nombre del producto"
+          placeholderTextColor="#6B7280" // Añadido para visibilidad
         />
         {errors.name && <Text className="text-red-500 text-sm mt-1">{errors.name}</Text>}
       </View>
@@ -275,6 +276,7 @@ const ProductForm = ({
           value={formData.description || ''}
           onChangeText={(text) => handleChange('description', text)}
           placeholder="Descripción del producto (opcional)"
+          placeholderTextColor="#6B7280" // Añadido para visibilidad
           multiline
           textAlignVertical="top"
         />
@@ -295,6 +297,7 @@ const ProductForm = ({
           }}
           keyboardType="numeric"
           placeholder="0.00"
+          placeholderTextColor="#6B7280" // Añadido para visibilidad
         />
         {errors.price && <Text className="text-red-500 text-sm mt-1">{errors.price}</Text>}
       </View>
@@ -306,6 +309,7 @@ const ProductForm = ({
           value={formData.sku || ''}
           onChangeText={(text) => handleChange('sku', text)}
           placeholder="Código de referencia"
+          placeholderTextColor="#6B7280" // Añadido para visibilidad
         />
         {errors.sku && <Text className="text-red-500 text-sm mt-1">{errors.sku}</Text>}
       </View>
@@ -317,6 +321,8 @@ const ProductForm = ({
             <Picker
               selectedValue={formData.category_id}
               onValueChange={(itemValue: number | null) => handleChange('category_id', itemValue)}
+              style={{ color: '#374151' }} // Añadido para visibilidad
+              dropdownIconColor="#6B7280" // Añadido para visibilidad
             >
               <Picker.Item label="Seleccione una categoría" value={null} />
               {categories.map((cat) => (

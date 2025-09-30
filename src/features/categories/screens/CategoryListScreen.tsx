@@ -163,6 +163,7 @@ const CategoryListScreen = () => {
           <TextInput
             className="flex-1 border border-gray-300 rounded-md p-2 text-gray-800 bg-white mr-2"
             placeholder="Buscar categorías..."
+            placeholderTextColor="#6B7280"
             value={pendingSearchTerm}
             onChangeText={handlePendingSearchChange}
             onSubmitEditing={handleSearchSubmit}

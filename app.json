@@ -4,7 +4,7 @@
     "slug": "movistoreapp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo1.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -16,6 +16,8 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.darklinx.movistoreapp",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -27,7 +29,10 @@
       "bundler": "metro"
     },
     "extra": {
-      "apiUrl": "notFound.com"
+      "apiUrl": "https://movistorebackend.onrender.com/api/v1",
+      "eas": {
+        "projectId": "210f8d7b-0810-4b11-993c-563dc03738ec"
+      }
     }
   }
 }

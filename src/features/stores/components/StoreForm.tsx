@@ -70,6 +70,7 @@ const StoreForm = ({
           value={formData.name || ''}
           onChangeText={(text) => handleChange('name', text)}
           placeholder="Nombre de la sucursal"
+          placeholderTextColor="#6B7280" // Añadido para visibilidad
         />
         {errors.name && <Text className="text-red-500 text-sm mt-1">{errors.name}</Text>}
       </View>
@@ -81,6 +82,7 @@ const StoreForm = ({
           value={formData.address || ''}
           onChangeText={(text) => handleChange('address', text)}
           placeholder="Dirección de la sucursal (opcional)"
+          placeholderTextColor="#6B7280" // Añadido para visibilidad
           multiline
           textAlignVertical="top"
         />

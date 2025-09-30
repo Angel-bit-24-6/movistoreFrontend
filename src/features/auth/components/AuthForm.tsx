@@ -40,9 +40,11 @@ const AuthForm = ({ type, onSuccess }: AuthFormProps) => {
 
       {type === 'register' && (
         <View className="mb-4">
+          <Text className="text-lg font-semibold text-gray-700 mb-1">Nombre</Text>
           <TextInput
             className="w-full p-3 border border-gray-300 rounded-md text-base text-gray-700"
             placeholder="Nombre"
+            placeholderTextColor="#6B7280" // Añadido para visibilidad
             value={formData.name || ''}
             onChangeText={(text) => handleChange('name', text)}
             autoCapitalize="words"
@@ -53,9 +55,11 @@ const AuthForm = ({ type, onSuccess }: AuthFormProps) => {
 
       {type === 'register' && (
         <View className="mb-4">
+          <Text className="text-lg font-semibold text-gray-700 mb-1">Apellido Paterno</Text>
           <TextInput
             className="w-full p-3 border border-gray-300 rounded-md text-base text-gray-700"
             placeholder="Apellido Paterno"
+            placeholderTextColor="#6B7280" // Añadido para visibilidad
             value={formData.apellido_paterno || ''}
             onChangeText={(text) => handleChange('apellido_paterno', text)}
             autoCapitalize="words"
@@ -66,9 +70,11 @@ const AuthForm = ({ type, onSuccess }: AuthFormProps) => {
 
       {type === 'register' && (
         <View className="mb-4">
+          <Text className="text-lg font-semibold text-gray-700 mb-1">Apellido Materno</Text>
           <TextInput
             className="w-full p-3 border border-gray-300 rounded-md text-base text-gray-700"
             placeholder="Apellido Materno"
+            placeholderTextColor="#6B7280" // Añadido para visibilidad
             value={formData.apellido_materno || ''}
             onChangeText={(text) => handleChange('apellido_materno', text)}
             autoCapitalize="words"
@@ -78,9 +84,11 @@ const AuthForm = ({ type, onSuccess }: AuthFormProps) => {
       )}
 
       <View className="mb-4">
+        <Text className="text-lg font-semibold text-gray-700 mb-1">Correo Electrónico</Text>
         <TextInput
           className="w-full p-3 border border-gray-300 rounded-md text-base text-gray-700"
           placeholder="Correo Electrónico"
+          placeholderTextColor="#6B7280" // Añadido para visibilidad
           value={formData.email || ''}
           onChangeText={(text) => handleChange('email', text)}
           keyboardType="email-address"
@@ -90,9 +98,11 @@ const AuthForm = ({ type, onSuccess }: AuthFormProps) => {
       </View>
 
       <View className="mb-6">
+        <Text className="text-lg font-semibold text-gray-700 mb-1">Contraseña</Text>
         <TextInput
           className="w-full p-3 border border-gray-300 rounded-md text-base text-gray-700"
           placeholder="Contraseña"
+          placeholderTextColor="#6B7280" // Añadido para visibilidad
           value={formData.password || ''}
           onChangeText={(text) => handleChange('password', text)}
           secureTextEntry

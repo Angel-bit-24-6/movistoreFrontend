@@ -342,6 +342,7 @@ const ProductAdminDetailScreen = ({ navigation, route }: ProductAdminDetailScree
             <TextInput
               className="border border-gray-300 rounded-md p-3 mb-4 text-lg text-gray-800"
               placeholder="Ingrese cantidad de cambio (+/-)"
+              placeholderTextColor="#6B7280" // Añadido para visibilidad
               keyboardType="numeric"
               value={stockChangeInput}
               onChangeText={setStockChangeInput}

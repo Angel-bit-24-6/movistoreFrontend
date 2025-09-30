@@ -37,6 +37,7 @@ const CategoryForm = ({
           value={formData.name || ''}
           onChangeText={(text) => handleChange('name', text)}
           placeholder="Nombre de la categoría"
+          placeholderTextColor="#6B7280"
         />
         {errors.name && <Text className="text-red-500 text-sm mt-1">{errors.name}</Text>}
       </View>
@@ -48,6 +49,7 @@ const CategoryForm = ({
           value={formData.description || ''}
           onChangeText={(text) => handleChange('description', text)}
           placeholder="Descripción de la categoría (opcional)"
+          placeholderTextColor="#6B7280"
           multiline
           textAlignVertical="top"
         />
