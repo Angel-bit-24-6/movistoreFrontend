@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Image, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Image, ScrollView, Alert, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { useFormValidation } from '../../../../src/hooks/useFormValidation';
 import { createProductSchema, updateProductSchema, CreateProductSchemaType, UpdateProductSchemaType, StockSchemaType, imageUploadFileSchema } from '../schemas/productSchemas'; // Importar imageUploadFileSchema
 import { Category, Product, Store, ImageUploadFile, ProductImage } from '../../../../src/types';
@@ -92,6 +92,7 @@ const ProductForm = ({
     schema,
     async (data) => {
       console.log('ProductForm: Enviando formulario. Datos:', data);
+      Keyboard.dismiss(); // Ocultar teclado al enviar formulario
       const imagesToSubmit = selectedImages.filter(img => !initialData?.images?.some(existingImg => existingImg.secure_url === img.uri));
 
       const dataToSend: any = { ...data };
@@ -256,8 +257,14 @@ const ProductForm = ({
   };
 
   return (
-    <ScrollView className="p-4 bg-white rounded-lg">
-      <View className="mb-4">
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View className="flex-1">
+        <ScrollView 
+          className="p-4 bg-white rounded-lg"
+          keyboardDismissMode="on-drag" // Ocultar teclado al arrastrar
+          showsVerticalScrollIndicator={false}
+        >
+          <View className="mb-4">
         <Text className="text-lg font-semibold text-gray-700 mb-1">Nombre</Text>
         <TextInput
           className="border border-gray-300 rounded-md p-2 text-gray-800"
@@ -416,8 +423,10 @@ const ProductForm = ({
             <Text className="text-white font-semibold">{type === 'create' ? 'Crear Producto' : 'Guardar Cambios'}</Text>
           )}
         </TouchableOpacity>
+          </View>
+        </ScrollView>
       </View>
-    </ScrollView>
+    </TouchableWithoutFeedback>
   );
 };
 

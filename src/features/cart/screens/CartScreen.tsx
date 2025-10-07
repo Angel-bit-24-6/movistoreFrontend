@@ -1,11 +1,11 @@
 import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Image, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { useCart } from '../../../context/CartContext';
 import { useStore } from '../../../context/StoreContext'; // Importar useStore
 // import { Feather } from '@expo/vector-icons'; // Para íconos como trash, plus, minus
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
-import { createOrder } from '../../orders/services/ordersService';
+// import { createOrder } from '../../orders/services/ordersService'; // Eliminado: la creación de la orden se mueve a CheckoutScreen
 import { NativeStackScreenProps, NativeStackNavigationProp } from '@react-navigation/native-stack'; // Importar de @react-navigation/native-stack y NativeStackNavigationProp
 import { CompositeScreenProps } from '@react-navigation/native'; // Importar CompositeScreenProps
 import { MainStackParamList } from '../../../navigation/MainStack';
@@ -14,20 +14,22 @@ import { DrawerScreenProps, DrawerNavigationProp } from '@react-navigation/drawe
 import { BottomTabParamList } from '../../../navigation/BottomTabNavigator'; // Importar BottomTabParamList
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs'; // Importar BottomTabScreenProps
 
-type CartScreenProps = 
-  BottomTabScreenProps<BottomTabParamList, 'CartTab'> | // Para cuando se usa en BottomTabNavigator
-  DrawerScreenProps<DrawerParamList, 'CartDrawer'>; // Para cuando se usa en DrawerNavigator (autenticado)
+type CartScreenProps = CompositeScreenProps<
+  BottomTabScreenProps<BottomTabParamList, 'CartTab'> | DrawerScreenProps<DrawerParamList, 'CartDrawer'>,
+  NativeStackScreenProps<MainStackParamList>
+>;
 
 const CartScreen = ({ navigation }: CartScreenProps) => {
   const { cartItems, clearCart, removeFromCart, updateCartItemQuantity, totalAmount, isLoading } = useCart();
   const { selectedStoreId } = useStore(); // Obtener selectedStoreId
   const { user } = useAuth(); // Obtener user del AuthContext
   const { showToast } = useToast(); // Obtener showToast del ToastContext
+  // import { createOrder } from '../../orders/services/ordersService'; // Eliminado: la creación de la orden se mueve a CheckoutScreen
   const [isSubmitting, setIsSubmitting] = React.useState(false); // Nuevo estado de carga
 
-  const handleProceedToCheckout = async () => { // Hacer la función asíncrona
+  const handleProceedToCheckout = () => {
     if (!user?.id) {
-      (navigation as unknown as BottomTabScreenProps<BottomTabParamList, 'CartTab'>['navigation']).navigate('LoginTab'); // Navegar a la pestaña de Login
+      (navigation as unknown as BottomTabScreenProps<BottomTabParamList, 'CartTab'>['navigation']).navigate('LoginTab'); // Navegar a la pestaña de Login con aserción
       showToast('info', 'Inicio de Sesión Requerido', 'Debes iniciar sesión para completar tu compra.');
       return;
     }
@@ -44,25 +46,8 @@ const CartScreen = ({ navigation }: CartScreenProps) => {
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const orderItems = cartItems.map(item => ({
-        product_id: item.product.id,
-        quantity: item.quantity,
-      }));
-
-      console.log('📦 Enviando orden al backend:', { userId: user.id, storeId: selectedStoreId, items: orderItems });
-      const newOrder = await createOrder(user.id, selectedStoreId, orderItems);
-      showToast('success', 'Orden Creada', `Tu orden #${newOrder.id} ha sido creada exitosamente.`);
-      clearCart(); // Limpiar el carrito después de la orden
-      (navigation as unknown as DrawerNavigationProp<DrawerParamList>).navigate('OrderListDrawer'); // Usar type assertion a través de unknown
-    } catch (error) {
-      const errorMessage = (error instanceof Error) ? error.message : 'Error al crear la orden.';
-      showToast('error', 'Error', errorMessage);
-      console.error('Error al procesar el pago:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Navegar a CheckoutScreen para la finalización de la compra
+    navigation.navigate('Checkout');
   };
 
   if (isLoading) { // Eliminar isLoadingStores
@@ -75,17 +60,19 @@ const CartScreen = ({ navigation }: CartScreenProps) => {
   }
 
   return (
-    <View className="flex-1 bg-white">
-      {cartItems.length === 0 ? (
-        <View className="flex-1 items-center justify-center p-4">
-          <Text className="text-xl text-gray-600">Tu carrito está vacío.</Text>
-          <Text className="text-md text-gray-500 mt-2">¡Añade algunos productos!</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={cartItems}
-          keyExtractor={(item) => item.product.id.toString()} // Volver al key original
-          renderItem={({ item }) => (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View className="flex-1 bg-white">
+        {cartItems.length === 0 ? (
+          <View className="flex-1 items-center justify-center p-4">
+            <Text className="text-xl text-gray-600">Tu carrito está vacío.</Text>
+            <Text className="text-md text-gray-500 mt-2">¡Añade algunos productos!</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={cartItems}
+            keyExtractor={(item) => item.product.id.toString()} // Volver al key original
+            keyboardDismissMode="on-drag" // Ocultar teclado al arrastrar
+            renderItem={({ item }) => (
             <View className="flex-row items-center bg-white p-4 mb-3 rounded-lg shadow-sm mx-4">
               <Image
                 source={{ uri: item.product?.thumbnail_url || 'https://via.placeholder.com/80' }}
@@ -142,7 +129,8 @@ const CartScreen = ({ navigation }: CartScreenProps) => {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 

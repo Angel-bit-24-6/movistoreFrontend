@@ -4,7 +4,9 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Header from '../../../components/Layout/Header';
 import { getProductById } from '../services/productsService';
 import { Product } from '../../../types';
-import { ProductStackParamList } from '../navigation/ProductStackNavigator';
+import { MainStackParamList } from '../../../navigation/MainStack'; // Importar MainStackParamList
+import { BottomTabParamList } from '../../../navigation/BottomTabNavigator'; // Importar BottomTabParamList
+
 import { useToast } from '../../../context/ToastContext';
 import { useCart } from '../../../context/CartContext';
 import { useStore } from '../../../context/StoreContext';
@@ -12,12 +14,16 @@ import { useAuth } from '../../../context/AuthContext'; // Importar useAuth
 import PagerView from 'react-native-pager-view'; // Importar PagerView
 import { useNavigation } from '@react-navigation/native'; // Importar useNavigation
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs'; // Importar BottomTabScreenProps
-import { BottomTabParamList } from '../../../navigation/BottomTabNavigator'; // Importar BottomTabParamList
+import { CompositeScreenProps } from '@react-navigation/native'; // Importar CompositeScreenProps
 
-type ProductDetailScreenProps = NativeStackScreenProps<ProductStackParamList, 'ProductDetail'>;
+
+type ProductDetailScreenProps = NativeStackScreenProps<MainStackParamList, 'ProductDetail'>;
 
 // Definir el tipo de navegación para la pestaña pública
-type ProductDetailScreenNavigationProp = BottomTabScreenProps<BottomTabParamList, 'ProductsTab'>['navigation'];
+type ProductDetailScreenNavigationProp = CompositeScreenProps<
+  NativeStackScreenProps<MainStackParamList>,
+  BottomTabScreenProps<BottomTabParamList, 'ProductsTab'>
+>['navigation'];
 
 const { width } = Dimensions.get('window'); // Obtener el ancho de la ventana para las imágenes
 
@@ -97,7 +103,7 @@ const ProductDetailScreen = ({ route }: ProductDetailScreenProps) => {
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
-      <Header title={product.name} canGoBack />
+      {/* <Header title={product.name} canGoBack /> */}{/* Eliminado el Header directo de la pantalla */}
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         {product.images && product.images.length > 0 ? (
           <View style={{ width: '100%', height: 240, borderRadius: 8, marginBottom: 16, overflow: 'hidden', position: 'relative' }}>

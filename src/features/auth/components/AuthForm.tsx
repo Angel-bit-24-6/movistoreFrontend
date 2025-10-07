@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, TouchableWithoutFeedback, Keyboard, ScrollView } from 'react-native';
 import { useFormValidation } from '../../../../src/hooks/useFormValidation'; // Necesitarás implementar este hook
 import { loginSchema, registerSchema } from '../schemas/authSchemas'; // Necesitarás implementar estos esquemas
 import { useAuth } from '../../../../src/context/AuthContext';
@@ -18,6 +18,7 @@ const AuthForm = ({ type, onSuccess }: AuthFormProps) => {
 
   const { formData, errors, handleChange, handleSubmit, resetForm, isLoading: formLoading } = useFormValidation(schema, async (data) => {
     try {
+      Keyboard.dismiss(); // Ocultar teclado al enviar formulario
       if (type === 'login') {
         await login(data as LoginCredentials);
       } else {
@@ -33,10 +34,17 @@ const AuthForm = ({ type, onSuccess }: AuthFormProps) => {
   const isLoading = authLoading || formLoading;
 
   return (
-    <View className="w-full max-w-sm p-6 bg-white rounded-lg shadow-md">
-      <Text className="text-3xl font-bold text-center text-gray-800 mb-6">
-        {type === 'login' ? 'Iniciar Sesión' : 'Registrarse'}
-      </Text>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View className="w-full max-w-sm">
+        <ScrollView 
+          className="bg-white rounded-lg shadow-md"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ padding: 24 }}
+        >
+          <Text className="text-3xl font-bold text-center text-gray-800 mb-6">
+            {type === 'login' ? 'Iniciar Sesión' : 'Registrarse'}
+          </Text>
 
       {type === 'register' && (
         <View className="mb-4">
@@ -110,20 +118,22 @@ const AuthForm = ({ type, onSuccess }: AuthFormProps) => {
         {errors.password && <Text className="text-red-500 text-sm mt-1">{errors.password}</Text>}
       </View>
 
-      <TouchableOpacity
-        className="w-full bg-blue-600 p-3 rounded-md items-center justify-center"
-        onPress={handleSubmit}
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text className="text-white text-lg font-semibold">
-            {type === 'login' ? 'Ingresar' : 'Crear Cuenta'}
-          </Text>
-        )}
-      </TouchableOpacity>
-    </View>
+          <TouchableOpacity
+            className="w-full bg-blue-600 p-3 rounded-md items-center justify-center"
+            onPress={handleSubmit}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text className="text-white text-lg font-semibold">
+                {type === 'login' ? 'Ingresar' : 'Crear Cuenta'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 

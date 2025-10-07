@@ -14,9 +14,9 @@ const Header = ({ title, canGoBack, showDrawerToggleButton }: HeaderProps) => {
   const navigation = useNavigation();
 
   return (
-    <SafeAreaView className="bg-blue-600 pt-4 pb-3 shadow-md flex-row items-center px-4">
+    <SafeAreaView className="bg-blue-600 pt-2 pb-2 shadow-md flex-row items-center px-4">
       {canGoBack && (
-        <TouchableOpacity onPress={() => navigation.goBack()} className="mr-4 p-2 rounded-full bg-blue-700">
+        <TouchableOpacity onPress={() => navigation.goBack()} className="mr-4 p-1 rounded-full bg-blue-700">
           {/* <Feather name="arrow-left" size={24} color="white" /> */}
           <Text className="text-white text-lg">←</Text>
         </TouchableOpacity>
@@ -25,7 +25,7 @@ const Header = ({ title, canGoBack, showDrawerToggleButton }: HeaderProps) => {
         <Text className="text-white text-xl font-bold text-center">{title}</Text>
       </View>
       {!canGoBack && showDrawerToggleButton && (
-        <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())} className="ml-4 p-2 rounded-full bg-blue-700">
+        <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())} className="ml-4 p-1 rounded-full bg-blue-700">
           {/* <Feather name="menu" size={24} color="white" /> */}
           <Text className="text-white text-lg">☰</Text>
         </TouchableOpacity>

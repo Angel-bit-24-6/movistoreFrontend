@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useFormValidation } from '../../../../src/hooks/useFormValidation';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { useFormValidation } from '../../../hooks/useFormValidation';
 import { createStoreSchema, updateStoreSchema, CreateStoreSchemaType, UpdateStoreSchemaType } from '../schemas/storeSchemas';
-import { Store } from '../../../../src/types';
+import { Store } from '../../../types';
 import { z } from 'zod';
 import { Picker } from '@react-native-picker/picker';
 
@@ -55,14 +55,21 @@ const StoreForm = ({
     } as UpdateStoreSchemaType;
   }, [type, mergedInitialData]);
 
-  const { formData, errors, handleChange, handleSubmit, isLoading } = useFormValidation(
+  const { formData, errors, handleChange, handleSubmit: originalHandleSubmit, isLoading } = useFormValidation(
     schema,
     onSubmit,
     initialValues
   );
 
+  // 🔥 GESTIÓN DEL TECLADO - Wrapper para handleSubmit
+  const handleSubmit = () => {
+    Keyboard.dismiss();
+    originalHandleSubmit();
+  };
+
   return (
-    <View className="p-4 bg-white rounded-lg">
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View className="p-4 bg-white rounded-lg">
       <View className="mb-4">
         <Text className="text-lg font-semibold text-gray-700 mb-1">Nombre</Text>
         <TextInput
@@ -71,6 +78,8 @@ const StoreForm = ({
           onChangeText={(text) => handleChange('name', text)}
           placeholder="Nombre de la sucursal"
           placeholderTextColor="#6B7280" // Añadido para visibilidad
+          onSubmitEditing={handleSubmit}
+          returnKeyType="next"
         />
         {errors.name && <Text className="text-red-500 text-sm mt-1">{errors.name}</Text>}
       </View>
@@ -85,6 +94,7 @@ const StoreForm = ({
           placeholderTextColor="#6B7280" // Añadido para visibilidad
           multiline
           textAlignVertical="top"
+          blurOnSubmit={true}
         />
         {errors.address && <Text className="text-red-500 text-sm mt-1">{errors.address}</Text>}
       </View>
@@ -111,7 +121,8 @@ const StoreForm = ({
           )}
         </TouchableOpacity>
       </View>
-    </View>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 

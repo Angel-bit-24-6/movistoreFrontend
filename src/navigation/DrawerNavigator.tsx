@@ -12,11 +12,11 @@ import CustomerDashboardScreen from '../screens/CustomerDashboardScreen';
 import { useAuth } from '../context/AuthContext';
 import Header from '../components/Layout/Header';
 import CartScreen from '../features/cart/screens/CartScreen';
-import ProductStackNavigator from '../features/products/navigation/ProductStackNavigator';
+import ProductListScreen from '../features/products/screens/ProductListScreen'; // Importar ProductListScreen
 
 export type DrawerParamList = {
   HomeDrawer: undefined;
-  Products: undefined; // Aquí se renderizará el ProductStackNavigator
+  ProductListDrawer: undefined; // Cambiar 'Products' a 'ProductListDrawer' para la lista de productos
   CategoryListDrawer: undefined;
   StoreListDrawer: undefined;
   OrderListDrawer: undefined; // Aquí se renderizará el OrderStackNavigator
@@ -55,8 +55,8 @@ const DrawerNavigator = () => {
         }}
       />
       <Drawer.Screen
-        name="Products" // Nombre que coincide con DrawerParamList
-        component={ProductStackNavigator}
+        name="ProductListDrawer" // Nombre que coincide con DrawerParamList
+        component={ProductListScreen}
         options={{
           title: 'Productos',
           headerShown: true,

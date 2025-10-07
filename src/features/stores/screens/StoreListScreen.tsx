@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert, Switch, TextInput } from 'react-native'; // Importar TextInput
-import ModalForm from '../../../../src/components/Modals/ModalForm';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert, Switch, TextInput, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import ModalForm from '../../../components/Modals/ModalForm';
 import StoreForm from '../components/StoreForm';
 import { useStores } from '../hooks/useStores';
-import { useAuth } from '../../../../src/context/AuthContext';
-import { useToast } from '../../../../src/context/ToastContext';
+import { useAuth } from '../../../context/AuthContext';
+import { useToast } from '../../../context/ToastContext';
 import { createStore, updateStore, softDeleteStore, restoreStore } from '../services/storesService';
-import { Store } from '../../../../src/types';
+import { Store } from '../../../types';
 import { CreateStoreSchemaType, UpdateStoreSchemaType } from '../schemas/storeSchemas';
-import Pagination from '../../../../src/components/Layout/Pagination'; // Importar el componente Pagination
+import Pagination from '../../../components/Layout/Pagination'; // Importar el componente Pagination
 import { Ionicons } from '@expo/vector-icons'; // Importar Ionicons
 
 const StoreListScreen = () => {
@@ -16,21 +16,50 @@ const StoreListScreen = () => {
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [selectedStore, setSelectedStore] = useState<Store | undefined>(undefined);
   const [showArchived, setShowArchived] = useState<boolean>(false);
-  const [pendingSearchTerm, setPendingSearchTerm] = useState(''); // Estado para el texto en el input
-  const [searchTerm, setSearchTerm] = useState(''); // Estado local para el término de búsqueda actual
+  const [pendingSearchTerm, setPendingSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // 🔥 NUEVOS ESTADOS PARA PREVENIR RACE CONDITIONS
+  const [isTogglingArchived, setIsTogglingArchived] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const isMountedRef = useRef(true);
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin'; // Determinar si el usuario es admin
+  const isAdmin = user?.role === 'admin';
 
   const { stores, isLoading, error, fetchStores, currentPage, totalPages, totalItems, limit, setPage, setLimit } =
-    useStores(showArchived, searchTerm, isAdmin); // Pasar el searchTerm local al hook useStores
+    useStores(showArchived, searchTerm, isAdmin);
 
   const { showToast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // 🔥 CLEANUP AL DESMONTAR
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // 🔥 DEBOUNCE PARA FILTROS
+  const debouncedFetchStores = useCallback((archived: boolean, search: string, admin: boolean) => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    
+    debounceTimeoutRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        fetchStores(archived, search, admin);
+      }
+    }, 300);
+  }, [fetchStores]);
 
   useEffect(() => {
-    fetchStores(showArchived, searchTerm, isAdmin); // Usar el searchTerm local para las dependencias
-  }, [showArchived, searchTerm, isAdmin, fetchStores]); // Usar el searchTerm local aquí
+    debouncedFetchStores(showArchived, searchTerm, isAdmin);
+  }, [showArchived, searchTerm, isAdmin, debouncedFetchStores]);
 
   const handleCreateStore = () => {
     setIsEditMode(false);
@@ -54,10 +83,31 @@ const StoreListScreen = () => {
     setPendingSearchTerm(text);
   };
 
-  const handleSearchSubmit = () => {
-    setSearchTerm(pendingSearchTerm); // Actualiza el searchTerm local
+  const handleSearchSubmit = useCallback(() => {
+    setSearchTerm(pendingSearchTerm);
     setPage(1);
-  };
+    Keyboard.dismiss();
+  }, [pendingSearchTerm, setPage]);
+
+  // 🔥 TOGGLE ARCHIVADOS CON PROTECCIÓN
+  const handleToggleArchived = useCallback(async (value: boolean) => {
+    if (isTogglingArchived || isLoading) {
+      return;
+    }
+
+    try {
+      setIsTogglingArchived(true);
+      setShowArchived(value);
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error('Error toggling archived:', error);
+      setShowArchived(!value);
+    } finally {
+      if (isMountedRef.current) {
+        setIsTogglingArchived(false);
+      }
+    }
+  }, [isTogglingArchived, isLoading]);
 
   const handleFormSubmit = useCallback(async (
     data: CreateStoreSchemaType | UpdateStoreSchemaType
@@ -139,23 +189,30 @@ const StoreListScreen = () => {
   const displayedStores = stores || [];
 
   return (
-    <View className="flex-1 bg-white">
-      {isAdmin && ( // Usar isAdmin directamente aquí
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View className="flex-1 bg-white">
+        {isAdmin && ( // Usar isAdmin directamente aquí
         <View className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 bg-gray-50 border-b border-gray-200">
           <Text className="text-xl font-bold text-gray-800 mb-2 sm:mb-0">Gestión de Sucursales</Text>
           <View className="flex flex-col sm:flex-row items-center">
             <View className="flex-row items-center mb-2 sm:mb-0 sm:mr-4">{/* Agrupar Switch y texto */}
               <Text className="text-base text-gray-700 mr-2">Mostrar Archivados:</Text>
-              <Switch
-                onValueChange={value => { setShowArchived(value); setPage(1); }} // Resetear página al cambiar filtro
-                value={showArchived}
-              />
+                    <View className="flex-row items-center">
+                      <Switch
+                        onValueChange={handleToggleArchived}
+                        value={showArchived}
+                        disabled={isTogglingArchived || isLoading}
+                      />
+                      {isTogglingArchived && (
+                        <ActivityIndicator size="small" color="#0000ff" style={{ marginLeft: 8 }} />
+                      )}
+                    </View>
             </View>
-            <TouchableOpacity
-              onPress={handleCreateStore}
-              className="bg-blue-600 px-4 py-2 rounded-md w-full sm:w-auto" // Botón de ancho completo en móvil, auto en sm
-              disabled={isSubmitting}
-            >
+                    <TouchableOpacity
+                      onPress={handleCreateStore}
+                      className="bg-blue-600 px-4 py-2 rounded-md w-full sm:w-auto"
+                      disabled={isSubmitting || isTogglingArchived}
+                    >
               <Text className="text-white font-semibold text-center">Nueva Sucursal</Text>
             </TouchableOpacity>
           </View>
@@ -221,6 +278,7 @@ const StoreListScreen = () => {
             </View>
           )}
           contentContainerClassName="py-4"
+          keyboardDismissMode="on-drag" // Ocultar teclado al arrastrar
         />
       )}
 
@@ -247,7 +305,8 @@ const StoreListScreen = () => {
           isLoading={isSubmitting}
         />
       </ModalForm>
-    </View>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 

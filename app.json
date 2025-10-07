@@ -19,7 +19,7 @@
       "package": "com.darklinx.movistoreapp",
       "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/logo1.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,

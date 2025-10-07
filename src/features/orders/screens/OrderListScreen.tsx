@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert, TextInput, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import ModalForm from '../../../../src/components/Modals/ModalForm';
 import { useOrders } from '../hooks/useOrders';
@@ -68,6 +68,7 @@ const OrderListScreen = ({ navigation }: OrderListScreenProps) => {
   const handleSearchSubmit = () => {
     setSearchTerm(pendingSearchTerm);
     setPage(1); // Resetear a la primera página en cada nueva búsqueda
+    Keyboard.dismiss(); // Ocultar teclado al buscar
   };
 
   const handleChangeStatus = (itemValue: typeof statusFilter) => {
@@ -129,9 +130,10 @@ const OrderListScreen = ({ navigation }: OrderListScreenProps) => {
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View className="flex-1 bg-white">
 
-      <View className="p-4 border-b border-gray-200 bg-gray-50">
+        <View className="p-4 border-b border-gray-200 bg-gray-50">
         {/* Sección de Búsqueda */}
         <View className="flex-row items-center mb-3">
           <TextInput
@@ -224,6 +226,7 @@ const OrderListScreen = ({ navigation }: OrderListScreenProps) => {
             </TouchableOpacity>
           )}
           contentContainerClassName="py-4"
+          keyboardDismissMode="on-drag" // Ocultar teclado al arrastrar
         />
       )}
 
@@ -282,7 +285,8 @@ const OrderListScreen = ({ navigation }: OrderListScreenProps) => {
           </TouchableOpacity>
         </View>
       </ModalForm>
-    </View>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 

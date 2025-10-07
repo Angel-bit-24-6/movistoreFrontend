@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useFormValidation } from '../../../../src/hooks/useFormValidation';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { useFormValidation } from '../../../hooks/useFormValidation';
 import { createCategorySchema, updateCategorySchema, CreateCategorySchemaType } from '../schemas/categorySchemas';
-import { Category } from '../../../../src/types';
+import { Category } from '../../../types';
 import { z } from 'zod';
 
 interface CategoryFormProps {
@@ -22,14 +22,21 @@ const CategoryForm = ({
 }: CategoryFormProps) => {
   const schema = type === 'create' ? createCategorySchema : updateCategorySchema;
 
-  const { formData, errors, handleChange, handleSubmit, isLoading } = useFormValidation(
+  const { formData, errors, handleChange, handleSubmit: originalHandleSubmit, isLoading } = useFormValidation(
     schema,
     onSubmit,
     initialData as any // Castear a any para mayor flexibilidad
   );
 
+  // 🔥 GESTIÓN DEL TECLADO - Wrapper para handleSubmit
+  const handleSubmit = () => {
+    Keyboard.dismiss();
+    originalHandleSubmit();
+  };
+
   return (
-    <View className="p-4 bg-white rounded-lg">
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View className="p-4 bg-white rounded-lg">
       <View className="mb-4">
         <Text className="text-lg font-semibold text-gray-700 mb-1">Nombre</Text>
         <TextInput
@@ -38,6 +45,8 @@ const CategoryForm = ({
           onChangeText={(text) => handleChange('name', text)}
           placeholder="Nombre de la categoría"
           placeholderTextColor="#6B7280"
+          onSubmitEditing={handleSubmit}
+          returnKeyType="done"
         />
         {errors.name && <Text className="text-red-500 text-sm mt-1">{errors.name}</Text>}
       </View>
@@ -52,6 +61,7 @@ const CategoryForm = ({
           placeholderTextColor="#6B7280"
           multiline
           textAlignVertical="top"
+          blurOnSubmit={true}
         />
         {errors.description && <Text className="text-red-500 text-sm mt-1">{errors.description}</Text>}
       </View>
@@ -78,7 +88,8 @@ const CategoryForm = ({
           )}
         </TouchableOpacity>
       </View>
-    </View>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 

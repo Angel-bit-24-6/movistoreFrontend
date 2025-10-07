@@ -1,110 +1,188 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert, Switch, TextInput } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert, Switch, TextInput, TouchableWithoutFeedback, Keyboard, Platform } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+
 import { Picker } from '@react-native-picker/picker';
 import { useProducts } from '../hooks/useProducts';
 import ProductCard from '../components/ProductCard';
-import { ProductStackParamList } from '../navigation/ProductStackNavigator';
-import { useAuth } from '../../../../src/context/AuthContext';
-import { useToast } from '../../../../src/context/ToastContext';
-import { useStore } from '../../../../src/context/StoreContext';
+import { useAuth } from '../../../context/AuthContext';
+import { useToast } from '../../../context/ToastContext';
+import { useStore } from '../../../context/StoreContext';
 import { softDeleteProduct, restoreProduct } from '../services/productsService';
-import { Product } from '../../../../src/types';
+import { Product } from '../../../types';
 import { useCategories } from '../../categories/hooks/useCategories';
 import CategorySelector from '../../categories/components/CategorySelector';
-import Pagination from '../../../../src/components/Layout/Pagination';
+import Pagination from '../../../components/Layout/Pagination';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native'; // Importar useFocusEffect
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
-type ProductListScreenProps = NativeStackScreenProps<ProductStackParamList, 'ProductList'>;
+type ProductListScreenProps = NativeStackScreenProps<any>;
 
 const ProductListScreen = ({ navigation }: ProductListScreenProps) => {
   const [showArchived, setShowArchived] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [pendingSearchTerm, setPendingSearchTerm] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  
+  // 🔥 NUEVOS ESTADOS PARA PREVENIR RACE CONDITIONS
+  const [isTogglingArchived, setIsTogglingArchived] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isMountedRef = useRef(true);
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { products, isLoading, error, fetchProducts, currentPage, totalPages, totalItems, limit, setPage, setLimit } = useProducts(showArchived, searchTerm, selectedCategoryId);
 
   const { user } = useAuth();
   const { showToast } = useToast();
-  const { stores, selectedStoreId, setSelectedStoreId, isLoadingStores, errorStores, fetchStores } = useStore(); // Asume que useStore expone fetchStores
-  const { categories, isLoading: isLoadingCategories, error: errorCategories, fetchCategories } = useCategories(); // Asume que useCategories expone fetchCategories
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { stores, selectedStoreId, setSelectedStoreId, isLoadingStores, errorStores, fetchStores } = useStore();
+  const { categories, isLoading: isLoadingCategories, error: errorCategories, fetchCategories } = useCategories();
 
+  // 🔥 CLEANUP AL DESMONTAR
   useEffect(() => {
-    fetchProducts(showArchived, searchTerm, selectedCategoryId);
-  }, [showArchived, searchTerm, selectedCategoryId, fetchProducts]);
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
 
+  // 🔥 DEBOUNCE PARA FILTROS - EVITA RENDERIZADOS EXCESIVOS
+  const debouncedFetchProducts = useCallback((archived: boolean, search: string, categoryId: number | null) => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    
+    debounceTimeoutRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        fetchProducts(archived, search, categoryId);
+      }
+    }, 300); // 300ms de delay
+  }, [fetchProducts]);
+
+  // 🔥 useEffect OPTIMIZADO
+  useEffect(() => {
+    debouncedFetchProducts(showArchived, searchTerm, selectedCategoryId);
+  }, [showArchived, searchTerm, selectedCategoryId, debouncedFetchProducts]);
+
+  // 🔥 useFocusEffect SIMPLIFICADO - SOLO CARGA INICIAL
   useFocusEffect(
     useCallback(() => {
-      // Refrescar tiendas, categorías y productos cuando la pantalla se enfoca
-      fetchStores();
-      fetchCategories(false, ''); // Pasar los parámetros por defecto si no son relevantes para el refresco inicial
-      fetchProducts(showArchived, searchTerm, selectedCategoryId); // Refrescar productos
+      let isActive = true;
 
-      // Opcional: limpiar cualquier estado al desenfocar
-      return () => {
-        // Por ejemplo, puedes resetear filtros o términos de búsqueda si lo deseas
+      const loadInitialData = async () => {
+        try {
+          if (isActive) {
+            await Promise.all([
+              fetchStores(),
+              fetchCategories(false, '')
+            ]);
+          }
+        } catch (error) {
+          if (isActive) {
+            console.error('Error loading initial data:', error);
+          }
+        }
       };
-    }, [fetchStores, fetchCategories, fetchProducts, showArchived, searchTerm, selectedCategoryId]) // Añadir fetchProducts y sus dependencias
+
+      loadInitialData();
+
+      return () => {
+        isActive = false;
+      };
+    }, [fetchStores, fetchCategories]) // 🔥 AGREGAR DEPENDENCIAS NECESARIAS
   );
 
   const handlePendingSearchChange = (text: string) => {
     setPendingSearchTerm(text);
   };
 
-  const handleSearchSubmit = () => {
+  const handleSearchSubmit = useCallback(() => {
     setSearchTerm(pendingSearchTerm);
     setPage(1);
-  };
+    Keyboard.dismiss();
+  }, [pendingSearchTerm, setPage]);
 
-  const handleStoreChange = (itemValue: string | null) => {
+  const handleStoreChange = useCallback((itemValue: string | null) => {
     setSelectedStoreId(itemValue ? parseInt(itemValue, 10) : null);
     setPage(1);
-  };
+  }, [setSelectedStoreId, setPage]);
 
-  const handleSelectCategory = (categoryId: number | null) => {
+  const handleSelectCategory = useCallback((categoryId: number | null) => {
     setSelectedCategoryId(categoryId);
     setPage(1);
-  };
+  }, [setPage]);
 
-  const handleEditProduct = (product: Product) => {
+  // 🔥 TOGGLE ARCHIVADOS CON PROTECCIÓN
+  const handleToggleArchived = useCallback(async (value: boolean) => {
+    if (isTogglingArchived || isLoading) {
+      return; // 🔥 PREVENIR MÚLTIPLES CLICKS
+    }
+
+    try {
+      setIsTogglingArchived(true);
+      setShowArchived(value);
+      
+      // 🔥 PEQUEÑO DELAY PARA EVITAR RACE CONDITIONS
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+    } catch (error) {
+      console.error('Error toggling archived:', error);
+      setShowArchived(!value); // Revertir en caso de error
+    } finally {
+      if (isMountedRef.current) {
+        setIsTogglingArchived(false);
+      }
+    }
+  }, [isTogglingArchived, isLoading]);
+
+  const handleEditProduct = useCallback((product: Product) => {
     navigation.navigate('ProductAdminDetail', { productId: product.id, selectedStoreId: selectedStoreId });
-  };
+  }, [navigation, selectedStoreId]);
 
-  const handleCreateProduct = () => {
+  const handleCreateProduct = useCallback(() => {
     navigation.navigate('ProductAdminDetail', {});
-  };
+  }, [navigation]);
 
-  const handleToggleProductStatus = (product: Product) => {
+  const handleToggleProductStatus = useCallback((product: Product) => {
+    if (isSubmitting) return; // 🔥 PREVENIR MÚLTIPLES OPERACIONES
+
     Alert.alert(
       product.status === 'active' ? 'Archivar Producto' : 'Restaurar Producto',
       `¿Estás seguro de que quieres ${product.status === 'active' ? 'archivar' : 'restaurar'} el producto "${product.name}"?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: product.status === 'active' ? 'Archivar' : 'Restaurar', onPress: async () => {
-            setIsSubmitting(true);
-            try {
-              if (product.status === 'active') {
-                await softDeleteProduct(product.id);
-                showToast('success', 'Producto Archivado', `El producto "${product.name}" ha sido archivado.`);
-              } else {
-                await restoreProduct(product.id);
-                showToast('success', 'Producto Restaurado', `El producto "${product.name}" ha sido restaurado.`);
-              }
+          if (isSubmitting) return;
+          
+          setIsSubmitting(true);
+          try {
+            if (product.status === 'active') {
+              await softDeleteProduct(product.id);
+              showToast('success', 'Producto Archivado', `El producto "${product.name}" ha sido archivado.`);
+            } else {
+              await restoreProduct(product.id);
+              showToast('success', 'Producto Restaurado', `El producto "${product.name}" ha sido restaurado.`);
+            }
+            
+            // 🔥 REFRESH CONTROLADO
+            if (isMountedRef.current) {
               fetchProducts(showArchived, searchTerm, selectedCategoryId);
-            } catch (err) {
-              const errorMessage = (err instanceof Error) ? err.message : 'Error al cambiar el estado del producto.';
-              showToast('error', 'Error', errorMessage);
-            } finally {
+            }
+          } catch (err) {
+            const errorMessage = (err instanceof Error) ? err.message : 'Error al cambiar el estado del producto.';
+            showToast('error', 'Error', errorMessage);
+          } finally {
+            if (isMountedRef.current) {
               setIsSubmitting(false);
             }
-          }, style: product.status === 'active' ? 'destructive' : 'default'
+          }
+        }, style: product.status === 'active' ? 'destructive' : 'default'
         },
       ]
     );
-  };
+  }, [isSubmitting, showArchived, searchTerm, selectedCategoryId, fetchProducts, showToast]);
 
   if (isLoading || isLoadingCategories) {
     return (
@@ -130,9 +208,10 @@ const ProductListScreen = ({ navigation }: ProductListScreenProps) => {
   const displayedProducts = products || [];
 
   return (
-    <View className="flex-1 bg-white">
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View className="flex-1 bg-white">
 
-      <View className="p-4 border-b border-gray-200 bg-gray-50">
+        <View className="p-4 border-b border-gray-200 bg-gray-50">
         <View className="flex-row items-center mb-3">
           <TextInput
             className="flex-1 border border-gray-300 rounded-md p-2 text-gray-800 bg-white mr-2"
@@ -159,15 +238,35 @@ const ProductListScreen = ({ navigation }: ProductListScreenProps) => {
         ) : (stores.length > 0 && selectedStoreId !== null) ? (
           <View className="mb-3">
             <Text className="text-base text-gray-700 mb-1">Seleccionar Sucursal:</Text>
-            <View className="border border-gray-300 rounded-md bg-white">
+            <View className={`border border-gray-300 rounded-md bg-white ${
+              Platform.OS === 'ios' ? 'h-12' : 'h-auto'
+            }`}>
               <Picker
                 selectedValue={selectedStoreId ? selectedStoreId.toString() : null}
                 onValueChange={handleStoreChange}
-                style={{ height: 50, width: '100%', color: '#374151' }} // Añade color aquí para el texto del valor seleccionado
-                dropdownIconColor="#6B7280" // Un color para el icono del dropdown, si quieres cambiarlo
+                style={{
+                  height: Platform.OS === 'ios' ? 48 : 50,
+                  width: '100%',
+                  color: '#374151',
+                  ...(Platform.OS === 'ios' && {
+                    marginVertical: 0,
+                    paddingVertical: 0,
+                  })
+                }}
+                dropdownIconColor="#6B7280"
+                itemStyle={Platform.OS === 'ios' ? {
+                  height: 48,
+                  fontSize: 16,
+                  color: '#374151'
+                } : undefined}
               >
                 {stores.map((store) => (
-                  <Picker.Item key={store.id} label={store.name} value={store.id.toString()} />
+                  <Picker.Item 
+                    key={store.id} 
+                    label={store.name} 
+                    value={store.id.toString()}
+                    color={Platform.OS === 'ios' ? '#374151' : undefined}
+                  />
                 ))}
               </Picker>
             </View>
@@ -196,18 +295,25 @@ const ProductListScreen = ({ navigation }: ProductListScreenProps) => {
             <View className="flex flex-col sm:flex-row items-center">
               <View className="flex-row items-center mb-2 sm:mb-0 sm:mr-4">
                 <Text className="text-base text-gray-700 mr-2">Mostrar Archivados:</Text>
-                <Switch
-                  onValueChange={value => setShowArchived(value)}
-                  value={showArchived}
-                />
+                {/* 🔥 SWITCH PROTEGIDO */}
+                <View className="flex-row items-center">
+                  <Switch
+                    onValueChange={handleToggleArchived}
+                    value={showArchived}
+                    disabled={isTogglingArchived || isLoading} // 🔥 DESHABILITAR DURANTE CARGA
+                  />
+                  {isTogglingArchived && (
+                    <ActivityIndicator size="small" color="#0000ff" style={{ marginLeft: 8 }} />
+                  )}
+                </View>
               </View>
-              <TouchableOpacity
-                onPress={handleCreateProduct}
-                className="bg-blue-600 px-4 py-2 rounded-md w-full sm:w-auto"
-                disabled={isSubmitting}
-              >
-                <Text className="text-white font-semibold text-center">Nuevo Producto</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleCreateProduct}
+                  className="bg-blue-600 px-4 py-2 rounded-md w-full sm:w-auto"
+                  disabled={isSubmitting || isTogglingArchived}
+                >
+                  <Text className="text-white font-semibold text-center">Nuevo Producto</Text>
+                </TouchableOpacity>
             </View>
           </View>
         )}
@@ -219,22 +325,26 @@ const ProductListScreen = ({ navigation }: ProductListScreenProps) => {
           {searchTerm && <Text className="text-gray-500 text-base mt-2">Intenta otra búsqueda.</Text>}
         </View>
       ) : (
-        <FlatList
-          data={displayedProducts}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <ProductCard
-              product={item}
-              onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
-              onEdit={user?.role === 'admin' ? handleEditProduct : undefined}
-              onToggleStatus={user?.role === 'admin' ? handleToggleProductStatus : undefined}
-              selectedStoreId={selectedStoreId}
-            />
-          )}
-          contentContainerClassName="p-4"
-          numColumns={2}
-          columnWrapperClassName="justify-between mb-4"
-        />
+          <FlatList
+            data={displayedProducts}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => (
+              <ProductCard
+                product={item}
+                onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
+                onEdit={user?.role === 'admin' ? handleEditProduct : undefined}
+                onToggleStatus={user?.role === 'admin' ? handleToggleProductStatus : undefined}
+                selectedStoreId={selectedStoreId}
+              />
+            )}
+            contentContainerClassName="p-4"
+            numColumns={2}
+            columnWrapperClassName="justify-between mb-4"
+            keyboardDismissMode="on-drag"
+            removeClippedSubviews={true} // 🔥 OPTIMIZACIÓN DE MEMORIA
+            maxToRenderPerBatch={10} // 🔥 RENDERIZADO POR LOTES
+            updateCellsBatchingPeriod={50} // 🔥 OPTIMIZACIÓN DE ACTUALIZACIONES
+          />
       )}
 
       {totalPages > 1 && (
@@ -245,7 +355,8 @@ const ProductListScreen = ({ navigation }: ProductListScreenProps) => {
           isLoading={isLoading}
         />
       )}
-    </View>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 

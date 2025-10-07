@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, ActivityIndicator, Alert, Image, TouchableOpacity } from 'react-native';
+import { View, Text, ActivityIndicator, Alert, Image, TouchableOpacity, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import Header from '../../../../src/components/Layout/Header';
 import ProductForm from '../components/ProductForm';
 import { CreateProductSchemaType, UpdateProductSchemaType, UpdateProductStockSchemaType } from '../schemas/productSchemas';
 import { addProductImage, createProduct, getProductById, removeProductImage, setProductThumbnail, updateProduct, updateProductStock } from '../services/productsService';
 import { useToast } from '../../../../src/context/ToastContext';
 import { ImageUploadFile, Product, ProductStockByStore, Store } from '../../../../src/types';
-import { ProductStackParamList } from '../navigation/ProductStackNavigator';
+import { MainStackParamList } from '../../../../src/navigation/MainStack';
 import { Modal, TextInput, Pressable } from 'react-native';
 import { useStores } from '../../stores/hooks/useStores';
 
-type ProductAdminDetailScreenProps = NativeStackScreenProps<ProductStackParamList, 'ProductAdminDetail'>;
+type ProductAdminDetailScreenProps = NativeStackScreenProps<MainStackParamList, 'ProductAdminDetail'>;
 
 interface StockAdjustmentInfo {
   storeId: number;
@@ -214,6 +213,7 @@ const ProductAdminDetailScreen = ({ navigation, route }: ProductAdminDetailScree
       return;
     }
 
+    Keyboard.dismiss(); // Ocultar teclado al confirmar ajuste
     handleUpdateStock(stockAdjustmentData.storeId, change, 'Ajuste manual');
   }, [stockAdjustmentData, stockChangeInput, handleUpdateStock, closeStockAdjustmentModal, showToast]);
 
@@ -265,15 +265,16 @@ const ProductAdminDetailScreen = ({ navigation, route }: ProductAdminDetailScree
   }
 
   return (
-    <View className="flex-1 bg-white">
-      <Header title={isEditMode ? "Editar Producto" : "Crear Producto"} canGoBack />
-      <ProductForm
-        type={isEditMode ? "edit" : "create"}
-        initialData={product || undefined}
-        onSubmit={handleFormSubmit}
-        onCancel={() => navigation.goBack()}
-        isLoading={isSubmitting}
-      />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View className="flex-1 bg-white">
+        {/* <Header title={isEditMode ? "Editar Producto" : "Crear Producto"} canGoBack /> */}
+        <ProductForm
+          type={isEditMode ? "edit" : "create"}
+          initialData={product || undefined}
+          onSubmit={handleFormSubmit}
+          onCancel={() => navigation.goBack()}
+          isLoading={isSubmitting}
+        />
 
       {isEditMode && product && (
         <View className="p-4 border-t border-gray-200 mt-4 bg-gray-50">
@@ -335,18 +336,19 @@ const ProductAdminDetailScreen = ({ navigation, route }: ProductAdminDetailScree
           className="flex-1 justify-center items-center bg-black/50"
           onPress={isSubmitting ? () => {} : closeStockAdjustmentModal} // Bloquear cierre si está en submit
         >
-          <View className="bg-white p-6 rounded-lg w-11/12 max-w-md shadow-xl">
-            <Text className="text-2xl font-bold text-gray-800 mb-4">Ajustar Stock: {stockAdjustmentData?.storeName}</Text>
-            <Text className="text-lg text-gray-700 mb-4">Stock actual: {stockAdjustmentData?.currentQuantity}</Text>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View className="bg-white p-6 rounded-lg w-11/12 max-w-md shadow-xl">
+              <Text className="text-2xl font-bold text-gray-800 mb-4">Ajustar Stock: {stockAdjustmentData?.storeName}</Text>
+              <Text className="text-lg text-gray-700 mb-4">Stock actual: {stockAdjustmentData?.currentQuantity}</Text>
 
-            <TextInput
-              className="border border-gray-300 rounded-md p-3 mb-4 text-lg text-gray-800"
-              placeholder="Ingrese cantidad de cambio (+/-)"
-              placeholderTextColor="#6B7280" // Añadido para visibilidad
-              keyboardType="numeric"
-              value={stockChangeInput}
-              onChangeText={setStockChangeInput}
-            />
+              <TextInput
+                className="border border-gray-300 rounded-md p-3 mb-4 text-lg text-gray-800"
+                placeholder="Ingrese cantidad de cambio (+/-)"
+                placeholderTextColor="#6B7280" // Añadido para visibilidad
+                keyboardType="numeric"
+                value={stockChangeInput}
+                onChangeText={setStockChangeInput}
+              />
 
             <View className="flex-row justify-end">
               <TouchableOpacity
@@ -366,11 +368,13 @@ const ProductAdminDetailScreen = ({ navigation, route }: ProductAdminDetailScree
                   <Text className="text-white text-lg font-semibold">Confirmar</Text>
                 )}
               </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          </TouchableWithoutFeedback>
         </Pressable>
       </Modal>
-    </View>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 

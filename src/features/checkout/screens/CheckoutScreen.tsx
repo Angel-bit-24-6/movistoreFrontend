@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Alert, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Picker } from '@react-native-picker/picker';
 import { CompositeScreenProps } from '@react-navigation/native';
@@ -7,7 +7,7 @@ import { DrawerScreenProps } from '@react-navigation/drawer';
 import { DrawerParamList } from '../../../../src/navigation/DrawerNavigator';
 import { StackActions } from '@react-navigation/native'; // Importar StackActions
 
-import Header from '../../../../src/components/Layout/Header';
+// import Header from '../../../../src/components/Layout/Header'; // Eliminado: el header es provisto por MainStack
 import { useCart } from '../../../../src/context/CartContext';
 import { useToast } from '../../../../src/context/ToastContext';
 import { useStores } from '../../stores/hooks/useStores'; // Para la selección de tiendas
@@ -25,6 +25,7 @@ const CheckoutScreen = ({ navigation }: CheckoutScreenProps) => {
   const { user } = useAuth();
 
   const [selectedStoreId, setSelectedStoreId] = useState<number | undefined>(undefined);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('cash'); // Nuevo estado para método de pago
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
@@ -37,7 +38,7 @@ const CheckoutScreen = ({ navigation }: CheckoutScreenProps) => {
     }
   }, [stores, selectedStoreId]);
 
-  const handleConfirmOrder = async () => {
+  const handleConfirmPurchase = async () => { // Renombrado de handleConfirmOrder a handleConfirmPurchase
     if (!user?.id) {
       showToast('error', 'Error', 'Debes iniciar sesión para realizar un pedido.');
       navigation.dispatch(StackActions.replace('Auth')); // Usar StackActions.replace para el Auth Stack
@@ -54,6 +55,11 @@ const CheckoutScreen = ({ navigation }: CheckoutScreenProps) => {
       return;
     }
 
+    if (selectedPaymentMethod !== 'cash') {
+      Alert.alert('Método de Pago', 'Este método de pago está en mantenimiento. Por favor, selecciona "Efectivo".');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const orderItems: OrderItemSchemaType[] = cartItems.map(item => ({
@@ -61,12 +67,7 @@ const CheckoutScreen = ({ navigation }: CheckoutScreenProps) => {
         quantity: item.quantity,
       }));
 
-      const orderData = {
-        store_id: selectedStoreId,
-        items: orderItems,
-      };
-
-      await createOrder(orderData);
+      await createOrder(user.id, selectedStoreId, orderItems); // Se pasa userId, storeId, items
       showToast('success', 'Orden Confirmada', 'Tu pedido ha sido realizado con éxito!');
       clearCart();
       navigation.navigate('Drawer', { screen: 'OrderListDrawer' }); // Redirigir a la lista de órdenes a través del Drawer
@@ -103,7 +104,7 @@ const CheckoutScreen = ({ navigation }: CheckoutScreenProps) => {
     return (
       <View className="flex-1 items-center justify-center bg-gray-100">
         <Text className="text-gray-500 text-xl">Tu carrito está vacío.</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Drawer', { screen: 'Products' })} className="mt-4 px-6 py-3 bg-blue-600 rounded-lg">
+        <TouchableOpacity onPress={() => navigation.navigate('Drawer', { screen: 'ProductListDrawer' })} className="mt-4 px-6 py-3 bg-blue-600 rounded-lg">
           <Text className="text-white text-lg font-bold">Explorar Productos</Text>
         </TouchableOpacity>
       </View>
@@ -111,10 +112,14 @@ const CheckoutScreen = ({ navigation }: CheckoutScreenProps) => {
   }
 
   return (
-    <View className="flex-1 bg-white">
-      <Header title="Checkout" canGoBack />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View className="flex-1 bg-white">
+        {/* Header is now provided by MainStack */}
 
-      <ScrollView className="flex-1 p-4">
+        <ScrollView 
+          className="flex-1 p-4"
+          keyboardDismissMode="on-drag" // Ocultar teclado al arrastrar
+        >
         <Text className="text-2xl font-bold text-gray-800 mb-4">Resumen de la Orden</Text>
 
         {cartItems.map((item) => (
@@ -130,10 +135,28 @@ const CheckoutScreen = ({ navigation }: CheckoutScreenProps) => {
             <Picker
               selectedValue={selectedStoreId}
               onValueChange={(itemValue: number | undefined) => setSelectedStoreId(itemValue)}
+              style={{ color: '#374151' }} // Añadido para visibilidad
+              dropdownIconColor="#6B7280" // Añadido para visibilidad
             >
               {stores.map(store => (
                 <Picker.Item key={store.id} label={store.name} value={store.id} />
               ))}
+            </Picker>
+          </View>
+        </View>
+
+        <View className="mt-6 p-4 bg-gray-50 rounded-lg">
+          <Text className="text-xl font-bold text-gray-800 mb-3">Método de Pago</Text>
+          <View className="border border-gray-300 rounded-md bg-white">
+            <Picker
+              selectedValue={selectedPaymentMethod}
+              onValueChange={(itemValue: string) => setSelectedPaymentMethod(itemValue)}
+              style={{ color: '#374151' }} // Añadido para visibilidad
+              dropdownIconColor="#6B7280" // Añadido para visibilidad
+            >
+              <Picker.Item label="Efectivo" value="cash" />
+              <Picker.Item label="Tarjeta de Crédito (Mantenimiento)" value="credit_card" />
+              <Picker.Item label="Transferencia Bancaria (Mantenimiento)" value="bank_transfer" />
             </Picker>
           </View>
         </View>
@@ -145,9 +168,9 @@ const CheckoutScreen = ({ navigation }: CheckoutScreenProps) => {
           </View>
 
           <TouchableOpacity
-            onPress={handleConfirmOrder}
+            onPress={handleConfirmPurchase}
             className={`bg-green-600 p-4 rounded-lg items-center ${isSubmitting ? 'opacity-50' : ''}`}
-            disabled={isSubmitting || cartItems.length === 0 || !selectedStoreId}
+            disabled={isSubmitting || cartItems.length === 0 || !selectedStoreId || selectedPaymentMethod !== 'cash'}
           >
             {isSubmitting ? (
               <ActivityIndicator color="white" />
@@ -156,8 +179,9 @@ const CheckoutScreen = ({ navigation }: CheckoutScreenProps) => {
             )}
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 

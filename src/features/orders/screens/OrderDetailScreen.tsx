@@ -58,7 +58,6 @@ const OrderDetailScreen = ({ route }: OrderDetailScreenProps) => {
 
   return (
     <View className="flex-1 bg-white">
-      <Header title={`Orden #${order.id}`} canGoBack />
 
       <ScrollView className="p-4">
         <View className="bg-white rounded-lg shadow-md p-4 mb-4">

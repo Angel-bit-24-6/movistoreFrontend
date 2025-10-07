@@ -3,8 +3,6 @@ import { createBottomTabNavigator, BottomTabScreenProps } from '@react-navigatio
 import { CompositeScreenProps } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import ProductListScreen from '../features/products/screens/ProductListScreen';
-import ProductDetailScreen from '../features/products/screens/ProductDetailScreen';
 import HomeScreen from '../screens/HomeScreen';
 import StoreListScreen from '../features/stores/screens/StoreListScreen';
 import CartScreen from '../features/cart/screens/CartScreen';
@@ -12,6 +10,8 @@ import LoginScreen from '../features/auth/screens/LoginScreen';
 import { Ionicons } from '@expo/vector-icons'; // Para íconos
 import Header from '../components/Layout/Header';
 import { useAuth } from '../context/AuthContext'; // Importar useAuth
+import ProductListScreen from '../features/products/screens/ProductListScreen'; // Re-importar ProductListScreen
+import ProductDetailScreen from '../features/products/screens/ProductDetailScreen'; // Re-importar ProductDetailScreen
 
 export type PublicProductStackParamList = {
   ProductList: undefined;
@@ -24,14 +24,23 @@ const PublicProductStackNavigator = () => {
   return (
     <PublicProductStack.Navigator screenOptions={{ headerShown: false }}>
       <PublicProductStack.Screen name="ProductList" component={ProductListScreen} />
-      <PublicProductStack.Screen name="ProductDetail" component={ProductDetailScreen} />
+      <PublicProductStack.Screen 
+        name="ProductDetail" 
+        component={ProductDetailScreen} 
+        options={({ route }) => ({
+          headerShown: true,
+          header: ({ navigation }) => (
+            <Header title="Detalle del Producto" canGoBack />
+          ),
+        })}
+      />
     </PublicProductStack.Navigator>
   );
 };
 
 export type BottomTabParamList = {
   HomeTab: undefined;
-  ProductsTab: undefined; // Renderizará PublicProductStackNavigator
+  ProductsTab: undefined; // Reintroducido
   StoresTab: undefined;
   CartTab?: undefined; // Opcional
   LoginTab?: undefined; // Opcional
@@ -49,20 +58,7 @@ const BottomTabNavigator = () => {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerShown: true, // Mostrar header superior para cada tab
-        header: ({ navigation, route }) => (
-          <Header 
-            title={route.name === 'HomeTab' ? 'MoviStore' :
-                   route.name === 'ProductsTab' ? 'Productos' :
-                   route.name === 'StoresTab' ? 'Sucursales' :
-                   route.name === 'CartTab' ? 'Tu Carrito' :
-                   route.name === 'LoginTab' ? 'Iniciar Sesión' :
-                   'MoviStore'} // Eliminar RegisterTab del switch
-            canGoBack={navigation.canGoBack()}
-            showDrawerToggleButton={false} // Siempre falso para navegación pública
-            // publicNavConfig no se pasa aquí, los tabs son la navegación
-          />
-        ),
+        headerShown: false, // Desactivar el header para la navegación por pestañas
         tabBarActiveTintColor: '#1d4ed8',
         tabBarInactiveTintColor: '#6b7280',
         tabBarStyle: { paddingBottom: 5, paddingTop: 5, height: 60 },
@@ -81,7 +77,7 @@ const BottomTabNavigator = () => {
       />
       <Tab.Screen 
         name="ProductsTab"
-        component={PublicProductStackNavigator} // Usa el stack interno para productos
+        component={PublicProductStackNavigator}
         options={{
           title: 'Productos',
           tabBarIcon: ({ color, size }) => (

@@ -1,34 +1,62 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert, Switch, TextInput } from 'react-native'; // Importar TextInput
-import ModalForm from '../../../../src/components/Modals/ModalForm';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert, Switch, TextInput, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import ModalForm from '../../../components/Modals/ModalForm';
 import CategoryForm from '../components/CategoryForm';
 import { useCategories } from '../hooks/useCategories';
-import { useAuth } from '../../../../src/context/AuthContext';
-import { useToast } from '../../../../src/context/ToastContext';
+import { useAuth } from '../../../context/AuthContext';
+import { useToast } from '../../../context/ToastContext';
 import { createCategory, updateCategory, softDeleteCategory, restoreCategory } from '../services/categoriesService';
-import { Category } from '../../../../src/types';
+import { Category } from '../../../types';
 import { CreateCategorySchemaType, UpdateCategorySchemaType } from '../schemas/categorySchemas';
-import Pagination from '../../../../src/components/Layout/Pagination'; // Importar el componente Pagination
+import Pagination from '../../../components/Layout/Pagination'; // Importar el componente Pagination
 import { Ionicons } from '@expo/vector-icons'; // Importar Ionicons
 
 const CategoryListScreen = () => {
   const [showArchived, setShowArchived] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(''); // Estado para el término de búsqueda actual
-  const [pendingSearchTerm, setPendingSearchTerm] = useState(''); // Estado para el texto en el input de búsqueda
+  const [searchTerm, setSearchTerm] = useState('');
+  const [pendingSearchTerm, setPendingSearchTerm] = useState('');
+  
+  // 🔥 NUEVOS ESTADOS PARA PREVENIR RACE CONDITIONS
+  const [isTogglingArchived, setIsTogglingArchived] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isMountedRef = useRef(true);
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Desestructurar las nuevas propiedades de paginación del hook useCategories
   const { categories, isLoading, error, fetchCategories, currentPage, totalPages, totalItems, limit, setPage, setLimit } =
-    useCategories(showArchived, searchTerm); // Pasar el searchTerm al hook
+    useCategories(showArchived, searchTerm);
 
   const { user } = useAuth();
   const { showToast } = useToast();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 🔥 CLEANUP AL DESMONTAR
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // 🔥 DEBOUNCE PARA FILTROS
+  const debouncedFetchCategories = useCallback((archived: boolean, search: string) => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    
+    debounceTimeoutRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        fetchCategories(archived, search);
+      }
+    }, 300);
+  }, [fetchCategories]);
 
   useEffect(() => {
-    fetchCategories(showArchived, searchTerm); // El hook gestiona currentPage y limit internamente
-  }, [showArchived, searchTerm, fetchCategories]); // Añadir searchTerm como dependencia
+    debouncedFetchCategories(showArchived, searchTerm);
+  }, [showArchived, searchTerm, debouncedFetchCategories]);
 
   const handleOpenCreateModal = () => {
     setEditingCategory(null);
@@ -50,11 +78,31 @@ const CategoryListScreen = () => {
     setPendingSearchTerm(text);
   };
 
-  // Función para enviar la búsqueda
-  const handleSearchSubmit = () => {
-    setSearchTerm(pendingSearchTerm); // Actualiza el searchTerm que usa el hook
-    setPage(1); // Resetear a la primera página en cada nueva búsqueda
-  };
+  const handleSearchSubmit = useCallback(() => {
+    setSearchTerm(pendingSearchTerm);
+    setPage(1);
+    Keyboard.dismiss();
+  }, [pendingSearchTerm, setPage]);
+
+  // 🔥 TOGGLE ARCHIVADOS CON PROTECCIÓN
+  const handleToggleArchived = useCallback(async (value: boolean) => {
+    if (isTogglingArchived || isLoading) {
+      return;
+    }
+
+    try {
+      setIsTogglingArchived(true);
+      setShowArchived(value);
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error('Error toggling archived:', error);
+      setShowArchived(!value);
+    } finally {
+      if (isMountedRef.current) {
+        setIsTogglingArchived(false);
+      }
+    }
+  }, [isTogglingArchived, isLoading]);
 
   const handleCreateCategory = async (data: CreateCategorySchemaType) => {
     setIsSubmitting(true);
@@ -144,8 +192,9 @@ const CategoryListScreen = () => {
   const displayedCategories = categories || []; // Ahora categories ya viene filtrado y paginado del hook/servicio
 
   return (
-    <View className="flex-1 bg-white">
-      <View className="flex-row justify-between items-center p-4 bg-gray-50 border-b border-gray-200">
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View className="flex-1 bg-white">
+        <View className="flex-row justify-between items-center p-4 bg-gray-50 border-b border-gray-200">
         <Text className="text-xl font-bold text-gray-800">Categorías</Text>
         {user?.role === 'admin' && (
           <TouchableOpacity
@@ -180,10 +229,16 @@ const CategoryListScreen = () => {
 
         <View className="flex-row items-center justify-end">
           <Text className="text-base text-gray-700 mr-2">Mostrar Archivadas:</Text>
-          <Switch
-            onValueChange={value => { setShowArchived(value); setPage(1); }} // Resetear página al cambiar filtro
-            value={showArchived}
-          />
+          <View className="flex-row items-center">
+            <Switch
+              onValueChange={handleToggleArchived}
+              value={showArchived}
+              disabled={isTogglingArchived || isLoading}
+            />
+            {isTogglingArchived && (
+              <ActivityIndicator size="small" color="#0000ff" style={{ marginLeft: 8 }} />
+            )}
+          </View>
         </View>
       </View>
 
@@ -224,6 +279,7 @@ const CategoryListScreen = () => {
             </View>
           )}
           contentContainerClassName="py-4"
+          keyboardDismissMode="on-drag" // Ocultar teclado al arrastrar
         />
       )}
 
@@ -250,7 +306,8 @@ const CategoryListScreen = () => {
           isLoading={isSubmitting}
         />
       </ModalForm>
-    </View>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 
